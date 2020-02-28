@@ -50,23 +50,26 @@ public class GraphActivity extends AppCompatActivity {
 
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.M)
+
     private void plot(float[] yPoints, int colorCode) {
 
         LineGraphSeries<DataPoint> points = new LineGraphSeries<>(new DataPoint[]{
                 new DataPoint(0, yPoints[0])
         });
 
-        switch (colorCode){
-            case 1:
-                points.setColor(getColor(R.color.green));
-                break;
-            case 2:
-                points.setColor(getColor( R.color.blue));
-                break;
-            case 3:
-                points.setColor(getColor(R.color.red));
-                break;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            switch (colorCode) {
+                case 1:
+
+                    points.setColor(getColor(R.color.red));
+                    break;
+                case 2:
+                    points.setColor(getColor(R.color.green));
+                    break;
+                case 3:
+                    points.setColor(getColor(R.color.blue));
+                    break;
+            }
         }
 
         graph.addSeries(points);
@@ -92,10 +95,9 @@ public class GraphActivity extends AppCompatActivity {
 
         graph.getGridLabelRenderer().setNumVerticalLabels(12);
 
-        graph.getViewport().setScrollableY(true);
+        graph.getViewport().setScalableY(true);
 
     }
-
 
     private void fetchExtras() {
 
