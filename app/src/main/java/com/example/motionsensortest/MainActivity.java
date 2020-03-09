@@ -1,7 +1,6 @@
 package com.example.motionsensortest;
 
 import androidx.appcompat.app.AppCompatActivity;
-
 import android.content.Context;
 import android.content.Intent;
 import android.hardware.Sensor;
@@ -14,34 +13,26 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
-
-import com.kircherelectronics.fsensor.BaseFilter;
-import com.kircherelectronics.fsensor.filter.averaging.LowPassFilter;
-
-import java.util.ArrayList;
 import java.util.List;
 
-import static java.lang.Math.abs;
 import static java.lang.Math.floor;
 
 public class MainActivity extends AppCompatActivity implements SensorEventListener {
 
+    //sensor config variables: Accelerometer and GyroScope
     private SensorManager sensorManager;
     private Sensor accelerometer, gyro;
-    private int prevAccuracyAcc, prevAccuracyGyro;
 
-    private static final float MINIMUM_DIFFERENCE = 0.1f;
-    private static final float FILTER_ALPHA = 0.18f;
+    //store sensor readings for later processing and graph
+    private SensorDatas accelerometerData, gyroDara;
 
-    private LowPassFilter filter;
-    private float finalAccelerationValues[], filteredAcceleration[];
-
-    //for GraphActivity
-    private ArrayList<Float> xAcceleration, yAcceleration, zAcceleration;
-    private ArrayList<Long> timeStamps;
+    //keep track of graph points after update button press
     private boolean updateButtonPressed;
 
+    //Texts
     private TextView accPowerText,gyroPowerText,accReadText, gyroReadText;
+
+    //start and stop recording sensor data for graph, start GraphView activity
     private Button startStopButton, showGraphButton;
 
     @Override
@@ -58,40 +49,32 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         setUpSensors();
 
-        initSensorVariables();
+        //sensor data objects
+        accelerometerData = new SensorDatas(0.01f, 0.18f);
+        gyroDara = new SensorDatas(0.001f, 0.00f);
 
         showAvailableSensors();
 
-        //for GraphView
-        xAcceleration = new ArrayList<>();
-        yAcceleration = new ArrayList<>();
-        zAcceleration = new ArrayList<>();
-        timeStamps = new ArrayList<>();
         updateButtonPressed = false;
     }
 
     private void setUpSensors() {
 
+        /*
+        initialize sensor configs
+         */
+
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-        prevAccuracyAcc = 0;
-        prevAccuracyGyro = 0;
 
         gyro = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
         accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
     }
 
-    private void initSensorVariables() {
-
-        filter = new LowPassFilter();
-        filter.setTimeConstant(FILTER_ALPHA);
-        filteredAcceleration = new float[3];
-
-        finalAccelerationValues = new float[3];
-        finalAccelerationValues[0] = finalAccelerationValues[1] = finalAccelerationValues[2] = 99;
-
-    }
-
     private void showAvailableSensors() {
+
+        /*
+        prints the available sensors in device
+         */
 
         List<Sensor> deviceSensors = sensorManager.getSensorList(Sensor.TYPE_ALL);
 
@@ -99,24 +82,26 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             Log.d("debug_slist", "onCreate: "+deviceSensors.get(i).getName());
     }
 
-
     @Override
     protected void onResume() {
         super.onResume();
 
-        //check for sensor availability
+        // if sensor present
+        // register sensor listeners, get battery power consumption (milli Amps)
+
         if(accelerometer!=null) {
             sensorManager.registerListener(this, accelerometer,
-                    SensorManager.SENSOR_DELAY_NORMAL, SensorManager.SENSOR_DELAY_UI);
+                    SensorManager.SENSOR_DELAY_NORMAL); //delay rate = 200ms (not always)
 
             accPowerText.setText("Accelerometer Power: "+accelerometer.getPower()+" mA");
         }
         else
             accReadText.setText("No Accelerometer Found!");
 
+        //check sensor available or not
         if(gyro!=null) {
-            sensorManager.registerListener(this, gyro, SensorManager.SENSOR_DELAY_NORMAL);
-            gyroPowerText.setText("GyroScope Power: " + gyro.getPower());
+            sensorManager.registerListener(this, gyro, SensorManager.SENSOR_DELAY_NORMAL); //delay rate = 200ms (not always)
+            gyroPowerText.setText("GyroScope Power: " + gyro.getPower()+" mA");
         }
         else {
             gyroPowerText.setText("GyroScope Power: null");
@@ -124,10 +109,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         }
         
         //reset variables for graph
-        xAcceleration = new ArrayList<>();
-        yAcceleration = new ArrayList<>();
-        zAcceleration = new ArrayList<>();
-        timeStamps = new ArrayList<>();
+        accelerometerData.resetGraphDatas();
+        gyroDara.resetGraphDatas();
+
+        //reset button status tracker
         updateButtonPressed = false;
         Log.d("graph_var_debug", "onResume: variables reset");
 
@@ -144,59 +129,64 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     @Override
     public void onSensorChanged(SensorEvent event) {
 
+        /*
+        triggered when any new sensor value arrives
+         */
+
         switch (event.sensor.getType()){
 
             case Sensor.TYPE_ACCELEROMETER:
 
-                //low pass filter from third party library
-                filteredAcceleration = filter.filter(event.values);
+                //check if new data is significantly different than previous
+                if( accelerometerData.normalizeValues(event.values, event.timestamp) ){
 
-                boolean valueChanged = false;
-
-                if( abs(finalAccelerationValues[0]-filteredAcceleration[0]) > MINIMUM_DIFFERENCE) {
-                    finalAccelerationValues[0] = filteredAcceleration[0];
-                    valueChanged = true;
-                }
-
-                if( abs(finalAccelerationValues[1]-filteredAcceleration[1]) > MINIMUM_DIFFERENCE){
-                    finalAccelerationValues[1] = filteredAcceleration[1];
-                    valueChanged = true;
-                }
-
-                if( abs(finalAccelerationValues[2]-filteredAcceleration[2]) > MINIMUM_DIFFERENCE) {
-                    finalAccelerationValues[2] = filteredAcceleration[2];
-                    valueChanged = true;
-                }
-
-                if(valueChanged) {
+                    //show 2 decimal places of sensor data in UI
                     accReadText.setText(
-                            "Accelerometer:\nx-axis = " + floor(finalAccelerationValues[0] * 100) / 100.00f //+" "+filteredAcceleration[0]
-                                    + "\ny-axis = " + floor(finalAccelerationValues[1] * 100) / 100.00f//+" "+filteredAcceleration[1]
-                                    + "\nz-axis = " + floor(finalAccelerationValues[2] * 100) / 100.00f//+" "+filteredAcceleration[2]
+                            "Accelerometer:\nx-axis = " +  floor(accelerometerData.getCurrentXValue()*100)/100.00f
+                                    + "\ny-axis = " + floor(accelerometerData.getCurrentYValue()*100)/100.00f
+                                    + "\nz-axis = " + floor(accelerometerData.getCurrentZValue()*100)/100.00f
+                    );
+
+                    Log.d("timesync", "Accelerometer value taken at = "
+                            +event.timestamp
                     );
 
                     //set graph plots
                     if(updateButtonPressed) {
-                        xAcceleration.add(finalAccelerationValues[0]);
-                        yAcceleration.add(finalAccelerationValues[1]);
-                        zAcceleration.add(finalAccelerationValues[2]);
 
-                        timeStamps.add(event.timestamp);
+                        accelerometerData.addDataSet(
+                                accelerometerData.getCurrentXValue(),
+                                accelerometerData.getCurrentYValue(),
+                                accelerometerData.getCurrentZValue(),
+                                event.timestamp
+                        );
 
                         Log.d("timeStampsDebug", "onSensorChanged: new timeStamp = "+event.timestamp);
                     }
                 }
 
-                break;
+            break;
 
-            //gyro values not filtered
+
             case Sensor.TYPE_GYROSCOPE:
-                gyroReadText.setText(
-                        "Gyroscope:\nx-axis = "+event.values[0]
-                                +"\ny-axis = "+event.values[1]
-                                + "\nz-axis = "+event.values[2]
-                );
-                break;
+
+                //check if new data is significantly different than previous
+                if(gyroDara.normalizeValues(event.values, event.timestamp) ) {
+
+                    //show 3 decimal places of sensor data in UI
+                    gyroReadText.setText(
+                            "Gyroscope:\nx-axis = " + floor(gyroDara.getCurrentXValue()*1000)/1000.000f//floor(finalValues[0] * 1000) / 1000.000f
+                                    + "\ny-axis = " + floor(gyroDara.getCurrentYValue()*1000)/1000.000f//floor(finalValues[1] * 1000) / 1000.000f
+                                    + "\nz-axis = " + floor(gyroDara.getCurrentZValue()*1000)/1000.000f//floor(finalValues[2] * 1000) / 1000.000f
+                    );
+
+                    Log.d("timesync", "Gyro value taken at = "
+                            + event.timestamp
+                    );
+
+                }
+
+            break;
 
         }
 
@@ -205,26 +195,31 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
 
+        /*
+        triggers when accuracy changes, accuracy values 0-3(0 = unreliable, 3 = best accuracy)
+         */
+
         //notify accuracy change
         switch (sensor.getType()){
 
             case Sensor.TYPE_ACCELEROMETER:
-                if(prevAccuracyAcc!=accuracy) {
+                if(accelerometerData.getPrevAccuracy()!=accuracy) {
 
-                    Toast.makeText(this, "Accuracy Changed! ("+prevAccuracyAcc+" -> "+accuracy+")", Toast.LENGTH_LONG).show();
+                    Toast.makeText(this, "Accuracy Changed! ("+accelerometerData.getPrevAccuracy()+" -> "+accuracy+")", Toast.LENGTH_LONG).show();
                     Log.d("debug_accuracy", "onAccuracyChanged: Linear Accelerometer accuracy = " + accuracy);
 
-                    prevAccuracyAcc = accuracy;
+                    accelerometerData.setPrevAccuracy(accuracy);
+                    //prevAccuracyAcc = accuracy;
                 }
                 break;
 
             case Sensor.TYPE_GYROSCOPE:
-                if(prevAccuracyGyro!=accuracy) {
+                if(gyroDara.getPrevAccuracy()!=accuracy) {
 
-                    Toast.makeText(this, "Accuracy Changed! ("+prevAccuracyGyro+" -> "+accuracy+")", Toast.LENGTH_LONG).show();
+                    Toast.makeText(this, "Accuracy Changed! ("+gyroDara.getPrevAccuracy()+" -> "+accuracy+")", Toast.LENGTH_LONG).show();
                     Log.d("debug_accuracy", "onAccuracyChanged: Gyroscope accuracy = " + accuracy);
 
-                    prevAccuracyGyro = accuracy;
+                    gyroDara.setPrevAccuracy(accuracy);
                 }
                 break;
         }
@@ -233,6 +228,12 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     //button onClick methods
     public void startStopClick(View view) {
+
+        /*
+        keep track of buttons enable/disable states.
+         */
+
+        //same button for Start and Stop
 
         if(!updateButtonPressed){
             updateButtonPressed = true;
@@ -252,28 +253,32 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     public void showGraphClick(View view) {
 
+        /*
+        start GraphView Activity with all the graph plotting values(axis-wise datas, timeStamps) passed using temporary arrays
+         */
+
         Intent intent = new Intent(this, GraphActivity.class);
 
-        long[] tempArrayL = new long[timeStamps.size()];
+        float[] tempArrayL = new float[accelerometerData.timeStamps.size()];
 
-        for(int i=0;i<timeStamps.size();i++)
-            tempArrayL[i] = timeStamps.get(i);
+        for(int i=0;i<accelerometerData.timeStamps.size();i++)
+            tempArrayL[i] = accelerometerData.timeStamps.get(i);
         intent.putExtra("timeStamps", tempArrayL);
 
-        float[] tempArrayF = new float[xAcceleration.size()];
+        float[] tempArrayF = new float[accelerometerData.xList.size()];
 
-        for(int i=0;i<xAcceleration.size();i++)
-            tempArrayF[i] = xAcceleration.get(i);
+        for(int i=0;i<accelerometerData.xList.size();i++)
+            tempArrayF[i] = accelerometerData.xList.get(i);
         intent.putExtra("pointsX", tempArrayF);
 
-        tempArrayF = new float[yAcceleration.size()];
-        for(int i=0;i<yAcceleration.size();i++)
-            tempArrayF[i] = yAcceleration.get(i);
+        tempArrayF = new float[accelerometerData.yList.size()];
+        for(int i=0;i<accelerometerData.yList.size();i++)
+            tempArrayF[i] = accelerometerData.yList.get(i);
         intent.putExtra("pointsY", tempArrayF);
 
-        tempArrayF = new float[zAcceleration.size()];
-        for(int i=0;i<zAcceleration.size();i++)
-            tempArrayF[i] = zAcceleration.get(i);
+        tempArrayF = new float[accelerometerData.zList.size()];
+        for(int i=0;i<accelerometerData.zList.size();i++)
+            tempArrayF[i] = accelerometerData.zList.get(i);
         intent.putExtra("pointsZ", tempArrayF);
 
         showGraphButton.setEnabled(false);

@@ -25,8 +25,7 @@ public class GraphActivity extends AppCompatActivity {
     private LineGraphSeries<DataPoint> xSeries, ySeries, zSeries;
 
     private static final float nanosToS = 1.0f/1000000000.0f;
-    private long[] timeStamps;
-    private float[] xAcc, yAcc, zAcc;
+    private float[] xAcc, yAcc, zAcc, timeStamps;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -35,16 +34,16 @@ public class GraphActivity extends AppCompatActivity {
 
         fetchExtras();
         Log.d("graphDebug"
-                , "onCreate: time elapsed = "+(timeStamps[timeStamps.length-1]-timeStamps[0])*nanosToS);
+                , "onCreate: time elapsed = "+(timeStamps[timeStamps.length-1]-timeStamps[0])/*nanosToS*/);
 
-        setUpGraph((timeStamps[timeStamps.length-1]-timeStamps[0])*nanosToS);
+        setUpGraph((timeStamps[timeStamps.length-1]-timeStamps[0])/*nanosToS*/);
 
         plot(xAcc, 1);
         plot(yAcc, 2);
         plot(zAcc, 3);
 
         Toast.makeText(this
-                , "time elapsed = "+(timeStamps[timeStamps.length-1]-timeStamps[0])*nanosToS
+                , "time elapsed = "+(timeStamps[timeStamps.length-1]-timeStamps[0])/*nanosToS*/
                 , Toast.LENGTH_LONG)
                 .show();
 
@@ -60,7 +59,6 @@ public class GraphActivity extends AppCompatActivity {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             switch (colorCode) {
                 case 1:
-
                     points.setColor(getColor(R.color.red));
                     break;
                 case 2:
@@ -75,8 +73,8 @@ public class GraphActivity extends AppCompatActivity {
         graph.addSeries(points);
 
         for(int i=1;i<yPoints.length;i++) {
-            points.appendData(new DataPoint(timeStamps[i] * nanosToS, yPoints[i]), false, 500);
-            Log.d("graphDebug", "plot: point = "+timeStamps[i] * nanosToS+", "+floor(yPoints[i]));
+            points.appendData(new DataPoint(timeStamps[i] /* nanosToS*/, yPoints[i]), false, 500);
+            Log.d("graphDebug", "plot: point = "+timeStamps[i] /* nanosToS*/+", "+floor(yPoints[i]));
         }
 
     }
@@ -103,11 +101,12 @@ public class GraphActivity extends AppCompatActivity {
 
         Intent intent = getIntent();
 
-        timeStamps = intent.getLongArrayExtra("timeStamps");
+        timeStamps = intent.getFloatArrayExtra("timeStamps");
+        Log.d("graphDebug", "fetchExtras: timeStamps = "+ Arrays.toString(timeStamps));
 
-        for(int i=1;i<timeStamps.length;i++)
+        /*for(int i=1;i<timeStamps.length;i++)
             timeStamps[i] = timeStamps[i]-timeStamps[0];
-        timeStamps[0] = 0;
+        timeStamps[0] = 0;*/
 
         xAcc = intent.getFloatArrayExtra("pointsX");
         Log.d("graphDebug", "fetchExtras: xAcc = "+ Arrays.toString(xAcc));
