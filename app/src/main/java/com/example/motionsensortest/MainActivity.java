@@ -21,7 +21,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     //sensor config variables: Accelerometer and GyroScope
     private SensorManager sensorManager;
-    private Sensor accelerometer, gyro;
+    private Sensor accelerometer, gyro, magnetometer, gravity;
 
     //store sensor readings for later processing and graph
     private SensorDatas accelerometerData, gyroDara;
@@ -30,7 +30,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private boolean updateButtonPressed;
 
     //Texts
-    private TextView accPowerText,gyroPowerText,accReadText, gyroReadText;
+    private TextView accPowerText,gyroPowerText,accReadText, gyroReadText, magnetometerPowerText, gravityPowerText;
 
     //start and stop recording sensor data for graph, start GraphView activity
     private Button startStopButton, showGraphButton;
@@ -46,6 +46,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         gyroReadText = findViewById(R.id.gyroReadings);
         startStopButton = findViewById(R.id.startStopBtn);
         showGraphButton = findViewById(R.id.showGraphBtn);
+        magnetometerPowerText = findViewById(R.id.magnetometerPowerText);
+        gravityPowerText = findViewById(R.id.gravityPowertText);
 
         setUpSensors();
 
@@ -68,6 +70,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         gyro = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
         accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+        magnetometer = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
+        gravity = sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY);
     }
 
     private void showAvailableSensors() {
@@ -107,6 +111,16 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             gyroPowerText.setText("GyroScope Power: null");
             gyroReadText.setText("No Gyroscope Found!");
         }
+
+
+        // just checking power
+        if(magnetometer!=null){
+            magnetometerPowerText.setText("Magnetometer Power: "+magnetometer.getPower()+" mA");
+        }
+        if(gravity!=null){
+            gravityPowerText.setText("Gravity Sensor Power: "+gravity.getPower()+" mA");
+        }
+
         
         //reset variables for graph
         accelerometerData.resetGraphDatas();
@@ -147,6 +161,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                                     + "\nz-axis = " + floor(accelerometerData.getCurrentZValue()*100)/100.00f
                     );
 
+                    Log.d("battery_mst", "onSensorChanged: Acc battery = "+accelerometer.getPower());
+
                     Log.d("timesync", "Accelerometer value taken at = "
                             +event.timestamp
                     );
@@ -179,6 +195,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                                     + "\ny-axis = " + floor(gyroDara.getCurrentYValue()*1000)/1000.000f//floor(finalValues[1] * 1000) / 1000.000f
                                     + "\nz-axis = " + floor(gyroDara.getCurrentZValue()*1000)/1000.000f//floor(finalValues[2] * 1000) / 1000.000f
                     );
+
+                    Log.d("battery_mst", "onSensorChanged: Gyro battery = "+gyro.getPower());
 
                     Log.d("timesync", "Gyro value taken at = "
                             + event.timestamp

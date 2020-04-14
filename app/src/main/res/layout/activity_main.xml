@@ -15,7 +15,7 @@
         android:layout_marginStart="40dp"
         android:layout_marginBottom="420dp"
         android:text="Accelerometer Power Requirement: "
-        android:textSize="18sp" />
+        android:textSize="14sp" />
 
     <TextView
         android:id="@+id/gyroPower"
@@ -26,7 +26,7 @@
         android:layout_marginStart="40dp"
         android:layout_marginBottom="400dp"
         android:text="Gyroscope Power Requirement: "
-        android:textSize="18sp" />
+        android:textSize="14sp" />
 
     <TextView
         android:id="@+id/accReadings"
@@ -82,5 +82,25 @@
             android:onClick="showGraphClick"
             android:text="Show Graph" />
     </LinearLayout>
+
+    <TextView
+        android:id="@+id/gravityPowertText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/accPower"
+        android:layout_alignParentStart="true"
+        android:layout_marginStart="40dp"
+        android:layout_marginBottom="5dp"
+        android:text="TextView" />
+
+    <TextView
+        android:id="@+id/magnetometerPowerText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/gravityPowertText"
+        android:layout_alignParentStart="true"
+        android:layout_marginStart="40dp"
+        android:layout_marginBottom="5dp"
+        android:text="TextView" />
 
 </RelativeLayout>
